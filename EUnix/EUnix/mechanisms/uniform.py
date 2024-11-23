@@ -2,6 +2,7 @@
 import pandas as pd
 import networkx as nx
 import numpy as np
+import uuid
 
 from EUnix.transactions.transactions import TransactionManager
 from EUnix.auctions.orders import OrderManager
@@ -55,8 +56,14 @@ def uniform_price_mechanism(orders):
     ## All the short side will trade at `price`
     ## The -1 is there because there is no clear 1 to 1 trade.
     for i, x in short_side.iterrows():
-        t = (i, x.energy_qty, price, -1, True)
-
+        #t = (i, x.energy_qty, price, -1, True)
+        if x.type:
+            t = (str(uuid.uuid4()), x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
+                 "","","","","","",price,x.energy_qty, x.delivery_time, "Buying")
+                #User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time
+        else:
+            t = (str(uuid.uuid4()),"","","","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
+                 price,x.energy_qty, x.delivery_time, "Selling")
         trans.add_transaction(*t)
     
 
@@ -68,7 +75,16 @@ def uniform_price_mechanism(orders):
             x_quantity = x.energy_qty
         else:
             x_quantity = traded_quantity - quantity_added
-        t = (i, x_quantity, price, -1, False)
+
+        if x.type:
+            t = (str(uuid.uuid4()), x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
+                 "","","","","","",price,x_quantity, x.delivery_time, "Buying")
+                #User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time
+        else:
+            t = (str(uuid.uuid4()),"","","","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, 
+                 x.bid_offer_time, price,x_quantity, x.delivery_time, "Selling")
+
+        #t = (i, x_quantity, price, -1, False)
         trans.add_transaction(*t)
         quantity_added += x.energy_qty
 
