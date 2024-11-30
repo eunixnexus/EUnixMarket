@@ -1,6 +1,7 @@
 import pandas as pd
 import networkx as nx
 import numpy as np
+import uuid
 
 from EUnix.transactions.transactions import TransactionManager
 from EUnix.auctions.orders import OrderManager
@@ -120,15 +121,24 @@ def p2p_random(orders, p_coef=0.5, r=None):
             if prices[b] >= prices[s]:
                 q = min(quantities[b], quantities[s])
                 p = prices[b] * p_coef + (1 - p_coef) * prices[s]
-                trans_b = (b, q, p, s, (quantities[b] - q) > 0)
-                trans_s = (s, q, p, b, (quantities[s] - q) > 0)
+                #trans_b = (b, q, p, s, (quantities[b] - q) > 0)
+                #trans_s = (s, q, p, b, (quantities[s] - q) > 0)
+                xb = buying.loc[b]
+                xs = selling.loc[s]               
+
+                trans_b = (str(uuid.uuid4()), xb.User, xb.User_id, xb.Order_id, xb.energy_qty, xb.energy_rate, xb.bid_offer_time,
+                 xs.User, xs.User_id, xs.Order_id, xs.energy_qty, xs.energy_rate, xs.bid_offer_time,p,q, xb.delivery_time, "Buying")
+                trans_s = (str(uuid.uuid4()), xb.User, xb.User_id, xb.Order_id, xb.energy_qty, xb.energy_rate, xb.bid_offer_time,
+                 xs.User, xs.User_id, xs.Order_id, xs.energy_qty, xs.energy_rate, xs.bid_offer_time,p,q, xb.delivery_time, "Selling")
+
                 quantities[b] -= q
                 quantities[s] -= q
+                trans.add_transaction(*trans_b)
+                trans.add_transaction(*trans_s)
             else:
                 trans_b = (b, 0, 0, s, True)
                 trans_s = (s, 0, 0, b, True)
-            trans.add_transaction(*trans_b)
-            trans.add_transaction(*trans_s)
+
 
         inactive_buying = [b for b in buying.index if quantities[b] == 0]
         inactive_selling = [s for s in selling.index if quantities[s] == 0]

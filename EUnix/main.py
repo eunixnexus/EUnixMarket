@@ -1,11 +1,9 @@
 import EUnix as mp
 
 
+Nslot = 4
 
-
-
-
-for i in range(3): #market slot
+for i in range(Nslot): #market slot
     mar= mp.Market()
 #(User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time,type, attributes, requirements, power, area, direction)
     mar.accept_order("Chris", "a2a2", 1, 100, 30, "20min","30min", True) 
@@ -23,7 +21,7 @@ for i in range(3): #market slot
 
 #bids = mar.get_oders()
 #print (bids)
-transactions, extras = mar.run('uniform')
+transactions, extras = mar.run('p2p')
 trans_df = transactions.get_df()
 print(trans_df)
 
