@@ -2,7 +2,7 @@ import redis
 import json
 import time
 from random import randint, uniform
-
+#testing the update
 # Connect to Redis
 redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
