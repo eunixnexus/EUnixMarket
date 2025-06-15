@@ -1,130 +1,72 @@
-
 import pandas as pd
-#import networkx as nx
 import numpy as np
 import uuid
 
 from EUnix.transactions.transactions import TransactionManager
 from EUnix.auctions.orders import OrderManager
 from EUnix.mechanisms import Mechanism
-from EUnix.auctions import demand_curves as dv
+from EUnix.mechanisms import uniform_process as dv
 
 
 def uniform_price_mechanism(orders):
-
     trans = TransactionManager()
 
-    buy, _ = dv.demand_curve_from_bids(orders) # Creates demand curve from bids
-    sell, _ = dv.supply_curve_from_bids(orders) # Creates supply curve from bids
+    buy, _ = dv.demand_curve_from_bids(orders)
+    sell, _ = dv.supply_curve_from_bids(orders)
+    q_, price, b_, s_ = dv.intersect_stepwise(buy, sell)
 
-
-
-    # q_ is the quantity at which supply and demand meet
-    # price is the price at which that happens
-    # b_ is the index of the buyer in that position
-    # s_ is the index of the seller in that position
-    #q_, b_, s_, price = dv.intersect_stepwise(buy, sell)
-
-    q_, price, b_, s_ = dv.intersect_stepwise(buy, sell)  
-
-
-    bids  = orders.loc[orders['type']].sort_values('energy_rate', ascending=False)
-    offers = orders.loc[~orders['type']].sort_values('energy_rate', ascending=True)
-
-
-    ## Filter only the trading bids.
-    if price  is None:
+    if price is None:
         return trans, []
-    bids = bids.iloc[: b_ + 1, :]
-    offers = offers.iloc[: s_ + 1, :]
 
+    bids = orders[orders.type].sort_values('energy_rate', ascending=False).iloc[:b_+1]
+    offers = orders[~orders.type].sort_values('energy_rate').iloc[:s_+1]
 
+    buying_qty = bids.energy_qty.sum()
+    selling_qty = offers.energy_qty.sum()
+    traded_qty = min(buying_qty, selling_qty)
 
-    # Find the long side of the market
-    buying_quantity = bids.energy_qty.sum()
-    selling_quantity = offers.energy_qty.sum()
+    short_side = bids if buying_qty <= selling_qty else offers
+    long_side = offers if buying_qty <= selling_qty else bids
 
+    # Add all short side transactions (fully matched)
+    for _, row in short_side.iterrows():
+        trans.add_transaction(*create_transaction(row, price, row.energy_qty))
 
-
-
-    if buying_quantity > selling_quantity:
-        long_side = bids
-        short_side = offers
-    else:
-        long_side = offers
-        short_side = bids
-
-    traded_quantity = short_side.energy_qty.sum()
-
-
-    ## All the short side will trade at `price`
-    ## The -1 is there because there is no clear 1 to 1 trade.
-    for i, x in short_side.iterrows():
-        #t = (i, x.energy_qty, price, -1, True)
-        if x.type:
-            t = (str(uuid.uuid4()), x.User, x.User_id, x.Unit_area,  x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
-                 "","","","","","",price,x.energy_qty, x.delivery_time, "Buying")
-                #User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time
-        else:
-            t = (str(uuid.uuid4()),"","", x.Unit_area, "","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
-                 price,x.energy_qty, x.delivery_time, "Selling")
-        trans.add_transaction(*t)
-    
-
-    ## The long side has to trade only up to the short side
+    # Add partial from long side until matched quantity is fulfilled
     quantity_added = 0
-    for i, x in long_side.iterrows():
+    for _, row in long_side.iterrows():
+        if quantity_added >= traded_qty:
+            break
+        x_qty = min(row.energy_qty, traded_qty - quantity_added)
+        trans.add_transaction(*create_transaction(row, price, x_qty))
+        quantity_added += x_qty
 
-        if x.energy_qty + quantity_added <= traded_quantity:
-            x_quantity = x.energy_qty
-        else:
-            x_quantity = traded_quantity - quantity_added
-
-        if x.type:
-            t = (str(uuid.uuid4()), x.User, x.User_id, x.Unit_area, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
-                 "","","","","","",price,x_quantity, x.delivery_time, "Buying")
-                #User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time
-        else:
-            t = (str(uuid.uuid4()),"","", x.Unit_area,"","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, 
-                 x.bid_offer_time, price,x_quantity, x.delivery_time, "Selling")
-
-        #t = (i, x_quantity, price, -1, False)
-        trans.add_transaction(*t)
-        quantity_added += x.energy_qty
-
-    extra = {
+    return trans, {
         'clearing quantity': q_,
         'clearing price': price
     }
 
 
+def create_transaction(row, price, matched_qty):
+    """Helper to generate a transaction tuple from a row."""
+    tx_id = str(uuid.uuid4())
+    if row.type:  # Buyer
+        return (
+            tx_id, row.User, row.User_id, row.Unit_area, row.Order_id,
+            row.energy_qty, row.energy_rate, row.bid_offer_time,
+            "", "", "", "", "", "", price, matched_qty, row.delivery_time, "Buying"
+        )
+    else:  # Seller
+        return (
+            tx_id, "", "", row.Unit_area, "", "", "", "",
+            row.User, row.User_id, row.Order_id, row.energy_qty,
+            row.energy_rate, row.bid_offer_time, price,
+            matched_qty, row.delivery_time, "Selling"
+        )
 
-    return trans, extra
 
-
-
-# Observe that we add as the second argument of init the algorithm just coded
 class UniformPrice(Mechanism):
-    """
-    Interface for our new uniform price mechanism.
-
-    Parameters
-    -----------
-    bids
-        Collection of bids to run the mechanism
-        with.
-    """
+    """Interface for uniform price mechanism."""
 
     def __init__(self, bids, *args, **kwargs):
-        """TODO: to be defined1. """
-        Mechanism.__init__(self, uniform_price_mechanism, bids, *args, **kwargs)
-        
-        
-        
-      
-        
-        
-        
-        
-        
-
+        super().__init__(uniform_price_mechanism, bids, *args, **kwargs)

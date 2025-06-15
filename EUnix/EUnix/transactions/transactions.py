@@ -1,147 +1,118 @@
 import pandas as pd
-import numpy as np
 
 
 class TransactionManager:
     """
-    An interaface to store and
-    manage all transactions.
-    Transactions are the minimal unit to represent
-    the outcome of a market.
+    Stores and manages transactions resulting from market clearing.
+
+    Each transaction represents a trade between a buyer and a seller,
+    including bid/offer details, clearing rate, matched quantity, etc.
 
     Attributes
-    -----------
-    name_col: list of str
-        Name of the columns to use in the dataframe
-        returned.
-    n_trans: int
-        Number of transactions currently in the Manager
-    trans: list of tuples
-        List of the actual transactions available
+    ----------
+    name_col : list of str
+        Column names for the transaction DataFrame.
+    n_trans : int
+        Number of transactions stored.
+    trans : list of tuple
+        List containing each transaction as a tuple.
     """
 
-    name_col = ["Trans_id", "Buyer", "Buyer_id", "Unit_area", "Bid_id", "Bid_qty", "Bid_rate", "Bid_time", "Seller", "Seller_id", 
-                "Offer_id", "Offer_qty", "Offer_rate", "Offer_time", "Clearing_rate", "Matched_qty", "Delivery_time", "Trans_type"]
+    name_col = [
+        "Trans_id", "Buyer", "Buyer_id", "Unit_area", "Bid_id", "Bid_qty",
+        "Bid_rate", "Bid_time", "Seller", "Seller_id", "Offer_id", "Offer_qty",
+        "Offer_rate", "Offer_time", "Clearing_rate", "Matched_qty",
+        "Delivery_time", "Trans_type"
+    ]
 
     def __init__(self):
-        """
-        """
+        """Initializes an empty transaction manager."""
         self.n_trans = 0
         self.trans = []
 
-    def add_transaction(self, Trans_id, Buyer, Buyer_id, Unit_area,  Bid_id, Bid_qty, Bid_rate, Bid_time, Seller, Seller_id, 
-                Offer_id, Offer_qty, Offer_rate, Offer_time, Clearing_rate, Matched_qty, Delivery_time,Trans_type):
-        """Add a transaction to the transactions list
-
-        Parameters
-        ----------
-        bid : int
-            Unique identifier of the bid
-        quantity : float
-            transacted quantity
-        price : float
-            transacted price
-        source : int
-            Identifier of the second party in the trasaction,
-            -1 if there is no clear second party, such as
-            in a double auction.
-        active :
-            True` if the bid is still active after the
-            transaction.
-
-        Returns
-        --------
-        trans_id: int
-            id of the added transaction, -1 if fails
-
-        Examples
-        ---------
-
-        >>> tm = pm.TransactionManager()
-        >>> tm.add_transaction(1, 0.5, 2.1, -1, False)
-        0
-        >>> tm.trans
-        [(1, 0.5, 2.1, -1, False)]
-        >>> tm.n_trans
-        1
+    def add_transaction(
+        self, Trans_id, Buyer, Buyer_id, Unit_area, Bid_id, Bid_qty,
+        Bid_rate, Bid_time, Seller, Seller_id, Offer_id, Offer_qty,
+        Offer_rate, Offer_time, Clearing_rate, Matched_qty,
+        Delivery_time, Trans_type
+    ):
         """
-
-        new_trans = (Trans_id, Buyer, Buyer_id, Unit_area, Bid_id, Bid_qty, Bid_rate, Bid_time, Seller, Seller_id, 
-                Offer_id, Offer_qty, Offer_rate, Offer_time, Clearing_rate, Matched_qty, Delivery_time,Trans_type)
-        self.trans.append(new_trans)
-        self.n_trans += 1
-
-        return self.n_trans - 1
-
-    def get_df(self):
-        """Returns the transaction dataframe
+        Adds a transaction to the list.
 
         Parameters
         ----------
+        Trans_id : str
+            Unique transaction ID.
+        Buyer, Seller : str
+            Names or identifiers of buyer and seller.
+        Buyer_id, Seller_id : str
+            Unique user IDs for buyer and seller.
+        Unit_area : str
+            Area where the device exist.
+        Bid_id, Offer_id : str
+            Unique IDs for the matched bid and offer.
+        Bid_qty, Offer_qty, Matched_qty : float
+            Quantities involved in the bid, offer, and transaction.
+        Bid_rate, Offer_rate, Clearing_rate : float
+            Prices offered, asked, and finally cleared.
+        Bid_time, Offer_time, Delivery_time : str or datetime
+            Timestamps related to bidding, offering, and delivery.
+        Trans_type : str
+            Either "Buying" or "Selling" to indicate buyer or seller record.
 
         Returns
         -------
-        df: pd.DataFrame
-            A pandas dataframe representing all the transactions
-            stored.
-
-        Examples
-        ---------
-        >>> tm = pm.TransactionManager()
-        >>> tm.add_transaction(1, 0.5, 2.1, -1, False)
-        0
-        >>> tm.add_transaction(5, 0, 0, 3, True)
-        1
-        >>> tm.get_df()
-           bid  quantity  price  source  active
-        0    1       0.5    2.1      -1   False
-        1    5       0.0    0.0       3    True
+        int
+            Index of the transaction added.
         """
+        new_trans = (
+            Trans_id, Buyer, Buyer_id, Unit_area, Bid_id, Bid_qty, Bid_rate,
+            Bid_time, Seller, Seller_id, Offer_id, Offer_qty, Offer_rate,
+            Offer_time, Clearing_rate, Matched_qty, Delivery_time, Trans_type
+        )
+        self.trans.append(new_trans)
+        self.n_trans += 1
+        return self.n_trans - 1
 
-        df = pd.DataFrame(self.trans, columns=self.name_col)
-        return df
+    def get_df(self):
+        """
+        Returns all stored transactions as a pandas DataFrame.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame of transactions.
+        """
+        return pd.DataFrame(self.trans, columns=self.name_col)
 
     def merge(self, other):
         """
-        Merges two transaction managers with each other
-        There are no checks on whether the new
-        TransactionManger is consisten after the
-        merge.
+        Merges another TransactionManager into this one.
 
         Parameters
         ----------
         other : TransactionManager
-            A different transaction manager to merge
-            with
+            Another transaction manager to combine with this one.
 
         Returns
         -------
-        trans : TransactionManager
-            A new transaction Manager
-            with the transactions of the two.
+        TransactionManager
+            New TransactionManager containing transactions from both.
 
-        Examples
-        ---------
-        >>> tm_1 = pm.TransactionManager()
-        >>> tm_1.add_transaction(1, 0.5, 2.1, -1, False)
-        0
-        >>> tm_2 = pm.TransactionManager()
-        >>> tm_2.add_transaction(5, 0, 0, 3, True)
-        0
-        >>> tm_3 = tm_1.merge(tm_2)
-        >>> tm_3.get_df()
-           bid  quantity  price  source  active
-        0    1       0.5    2.1      -1   False
-        1    5       0.0    0.0       3    True
-
+        Raises
+        ------
+        AssertionError
+            If `other` is not a TransactionManager.
         """
+        assert isinstance(other, TransactionManager), "Must merge with another TransactionManager"
 
-        assert isinstance(other, TransactionManager)
-
-        trans = TransactionManager()
+        merged = TransactionManager()
         for t in self.trans:
-            trans.add_transaction(*t)
+            merged.add_transaction(*t)
         for t in other.trans:
-            trans.add_transaction(*t)
+            merged.add_transaction(*t)
 
-        return trans
+        return merged
+
+    def __repr__(self):
+        return f"<TransactionManager: {self.n_trans} transactions>"

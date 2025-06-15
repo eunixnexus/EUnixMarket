@@ -55,6 +55,7 @@ class Simulation():
             trans_df["User Rate"] = trans_df.apply(lambda row: row["Clearing_rate"] 
             if row["Trans_type"] == "Buying" else row["Clearing_rate"] - self.grid_fee,
             axis=1)
+            trans_df["Offer_rate"] = pd.to_numeric(trans_df["Offer_rate"], errors="coerce")
             trans_df["Offer_rate"] = trans_df["Offer_rate"].apply(lambda x: x - self.grid_fee if pd.notnull(x) else x)
             
             trans_stat = stats.compute_statis(trans_df)

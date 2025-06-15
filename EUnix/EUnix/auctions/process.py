@@ -1,140 +1,104 @@
 # -*- coding: utf-8 -*-
 """
-Implements processing techniques applied to bids before
-mechanisms can use them
+Implements processing techniques applied to bids before mechanisms can use them.
 """
 import numpy as np
 import pandas as pd
-from .orders import OrderManager
 from collections import OrderedDict
 
 
-def new_player_id(index):
-    """Helper function for merge_same_price.
-    Creates a function that returns consecutive integers.
+def new_player_id(start_index: int):
+    """
+    Returns a generator function that assigns new unique user IDs when 
+    merging multiple user bids into one.
 
     Parameters
-    -----------
-    index: int
-        First identifier to use for the
-        new fake players
+    ----------
+    start_index : int
+        Starting ID for new "virtual" users.
 
     Returns
     -------
-    Callable : function
-        Function that maps a list
-        of user ids into a new user id.
-
-    Examples
-    ----------
-    >>> id_gen = new_player_id(6)
-    >>> id_gen([3])
-    3
-    >>> id_gen([5])
-    5
-    >>> id_gen([0, 1])
-    6
-    >>> id_gen([2, 4])
-    7
-
+    function
+        A function that takes a list of user IDs and returns:
+        - the same ID if the list has one element,
+        - a new ID if the list has more than one element.
     """
-    new_player_id.index = index
-    def new_id(users):
-        """
-        Generates a unique identifier for a
-        list of users. If the list has
-        only one user, then the id is mantained
-        else, a new user id is created for the
-        whole list.
+    new_player_id.index = start_index
 
-        Parameters
-        ----------
-        users: list of int
-            List of 1 or more user's identifiers.
-            Precondition: all elements of users
-            are smaller than index.
-        Returns
-        -------
-        int
-            The old identifier if in the list
-            there was only one player
-            and or the next new consecutive
-            identifier if there where more
-            than one.
-
-        """
-
-        #nonlocal index
+    def assign_id(users):
         if len(users) > 1:
-            new_index = new_player_id.index
+            new_id = new_player_id.index
             new_player_id.index += 1
-        else:
-            new_index = users[0]
+            return new_id
+        return users[0]
 
-        return new_index
-
-    return new_id
+    return assign_id
 
 
-def merge_same_price(df, prec=5):
+def merge_same_price(df: pd.DataFrame, prec: int = 5):
     """
-    Process a collection of bids by merging in each
-    side (buying or selling) all players with the same
-    price into a new user with their aggregated quantity
+    Merges orders (bids or offers) that have the same price by rounding to 
+    a specified precision and aggregating their quantities.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Collection of bids to process
-    prec: float
-        Number of digits to use after the comma
+        DataFrame of bids/offers. Must contain columns: 
+        'user', 'price', 'quantity', 'buying', 'time', 'divisible'
+    prec : int, optional
+        Precision to round prices before merging (default is 5).
 
-
-
+    Returns
+    -------
+    merged_df : pd.DataFrame
+        DataFrame with merged bids/offers grouped by rounded price.
+    bid_mapping : dict
+        Dictionary mapping merged rows to original bid indices (for tracking).
     """
 
+    # Start assigning virtual user IDs after the highest current ID
     id_gen = new_player_id(df.user.max() + 1)
-    columns = df.columns.copy()
 
+    original_columns = df.columns.copy()
     df = df.copy().reset_index().rename(columns={'index': 'bid'})
 
-    buy = df.loc[df['buying'], :]
-    sell = df.loc[~df['buying'], :]
+    # Split into buying and selling sides
+    buy_df = df[df['buying']]
+    sell_df = df[~df['buying']]
 
-    dataframes = [buy, sell]
+    all_sides = [buy_df, sell_df]
+    merged_dfs = []
+    bid_mapping = OrderedDict()
 
-    agg_fun = {
+    # Define how each column should be aggregated
+    agg_functions = {
         'bid': list,
         'user': list,
         'quantity': sum,
-        'buying': lambda x: x.sample(1),
-        'time': lambda x: x.sample(1),
-        'divisible': lambda x: x.sample(1),
+        'buying': lambda x: x.iloc[0],
+        'time': lambda x: x.iloc[0],
+        'divisible': lambda x: x.iloc[0]
     }
 
-    dataframe_new = []
-    user_to_bid = OrderedDict()
-    for df_ in dataframes:
-        rounded_prices = df_.price.apply(lambda x: np.round(x, prec))
-        df_new = df_.groupby(rounded_prices).agg(agg_fun).reset_index()
-        # print(df_new)
-        df_new.user = df_new.user.apply(id_gen)
-        #maping = df_new.set_index('user').bid.to_dict()
-        # for k, v in maping.items():
-        #    user_to_bid[k] = v
+    for side_df in all_sides:
+        # Group by rounded price
+        rounded_price = side_df.price.round(prec)
+        grouped = side_df.groupby(rounded_price).agg(agg_functions).reset_index()
 
-        dataframe_new.append(df_new)
+        # Assign new user IDs (same if only 1 user; new ID if >1)
+        grouped['user'] = grouped['user'].apply(id_gen)
 
-    dataframe_new = pd.concat(dataframe_new).reset_index(drop=True)
-    final_maping = dataframe_new.bid.to_dict()
-    # print(final_maping)
-    dataframe_new = dataframe_new[columns]
-    # print('-------------')
-    # print(dataframe_new)
-    #index_to_user = dataframe_new.user.to_dict()
+        # Keep track of bid origins
+        for i, bids in enumerate(grouped['bid']):
+            bid_mapping[i] = bids
 
-    #final_maping =
-    # for k, v in index_to_user.items():
-    #    final_maping[k] = user_to_bid[v]
+        merged_dfs.append(grouped)
 
-    return dataframe_new, final_maping
+    # Combine buy and sell sides
+    merged_df = pd.concat(merged_dfs).reset_index(drop=True)
+
+    # Reorder columns to match original input
+    merged_df = merged_df[original_columns]
+
+    return merged_df, bid_mapping
