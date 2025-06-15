@@ -2,16 +2,17 @@ import time
 import EUnix as mp
 from EUnix.redisconnection.publish import ProcessSlots as pps
 from EUnix.transactions import stats
-
+import pandas as pd
 
 
 class Simulation():
  
-    def __init__(self, data, startSlot = None, steps = 96, mmc = "p2p"):
+    def __init__(self, data, startSlot = None, steps = 96, mmc = "p2p", grid_fee = 0):
         """TODO: to be defined."""
         self.pub_ins = pps(data,startSlot, steps)
         self.simu_slots=self.pub_ins.get_timeSlot()
         self.mmc = mmc
+        self.grid_fee = grid_fee
 
 
     def mach_function(self, prev_step):
@@ -26,13 +27,18 @@ class Simulation():
         mar= mp.Market()
 
         for record in bid_offer_data:
+                # Adjust price for offers only
+            if record['Type'] is False:  # Offer
+                adjusted_rate = record['energy_rate'] + self.grid_fee
+            else:  # Bid
+                adjusted_rate = record['energy_rate']
             mar.accept_order(
                 record["User"],           # User
                 record['User_id'],        # User_id 
                 record['Unit_area'],      # User_area
                 record['Order_id'],       # Order_id
                 record['energy_qty'],     # energy_qty
-                record['energy_rate'],    # energy_rate
+                adjusted_rate,    # energy_rate
                 record['bid-offer-time'], # bid-offer-time
                 record['delivery-time'],  # delivery-time
                 record['Type']            # Type
@@ -45,6 +51,12 @@ class Simulation():
         if trans_df.empty:
             print("The results is empty.")
         else:
+            #Update grid fees
+            trans_df["User Rate"] = trans_df.apply(lambda row: row["Clearing_rate"] 
+            if row["Trans_type"] == "Buying" else row["Clearing_rate"] - self.grid_fee,
+            axis=1)
+            trans_df["Offer_rate"] = trans_df["Offer_rate"].apply(lambda x: x - self.grid_fee if pd.notnull(x) else x)
+            
             trans_stat = stats.compute_statis(trans_df)
             print(trans_stat)#Calculate and publish statistics
             json_data_res = trans_df.to_json(orient='records', indent=4)
