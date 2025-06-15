@@ -20,7 +20,7 @@ class TransactionManager:
         List of the actual transactions available
     """
 
-    name_col = ["Trans_id", "Buyer", "Buyer_id", "Bid_id", "Bid_qty", "Bid_rate", "Bid_time", "Seller", "Seller_id", 
+    name_col = ["Trans_id", "Buyer", "Buyer_id", "Unit_area", "Bid_id", "Bid_qty", "Bid_rate", "Bid_time", "Seller", "Seller_id", 
                 "Offer_id", "Offer_qty", "Offer_rate", "Offer_time", "Clearing_rate", "Matched_qty", "Delivery_time", "Trans_type"]
 
     def __init__(self):
@@ -29,7 +29,7 @@ class TransactionManager:
         self.n_trans = 0
         self.trans = []
 
-    def add_transaction(self, Trans_id, Buyer, Buyer_id, Bid_id, Bid_qty, Bid_rate, Bid_time, Seller, Seller_id, 
+    def add_transaction(self, Trans_id, Buyer, Buyer_id, Unit_area,  Bid_id, Bid_qty, Bid_rate, Bid_time, Seller, Seller_id, 
                 Offer_id, Offer_qty, Offer_rate, Offer_time, Clearing_rate, Matched_qty, Delivery_time,Trans_type):
         """Add a transaction to the transactions list
 
@@ -66,7 +66,7 @@ class TransactionManager:
         1
         """
 
-        new_trans = (Trans_id, Buyer, Buyer_id, Bid_id, Bid_qty, Bid_rate, Bid_time, Seller, Seller_id, 
+        new_trans = (Trans_id, Buyer, Buyer_id, Unit_area, Bid_id, Bid_qty, Bid_rate, Bid_time, Seller, Seller_id, 
                 Offer_id, Offer_qty, Offer_rate, Offer_time, Clearing_rate, Matched_qty, Delivery_time,Trans_type)
         self.trans.append(new_trans)
         self.n_trans += 1

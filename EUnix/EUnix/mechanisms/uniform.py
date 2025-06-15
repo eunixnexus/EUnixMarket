@@ -1,6 +1,6 @@
 
 import pandas as pd
-import networkx as nx
+#import networkx as nx
 import numpy as np
 import uuid
 
@@ -23,7 +23,9 @@ def uniform_price_mechanism(orders):
     # price is the price at which that happens
     # b_ is the index of the buyer in that position
     # s_ is the index of the seller in that position
-    q_, b_, s_, price = dv.intersect_stepwise(buy, sell)
+    #q_, b_, s_, price = dv.intersect_stepwise(buy, sell)
+
+    q_, price, b_, s_ = dv.intersect_stepwise(buy, sell)  
 
 
     bids  = orders.loc[orders['type']].sort_values('energy_rate', ascending=False)
@@ -31,6 +33,8 @@ def uniform_price_mechanism(orders):
 
 
     ## Filter only the trading bids.
+    if price  is None:
+        return trans, []
     bids = bids.iloc[: b_ + 1, :]
     offers = offers.iloc[: s_ + 1, :]
 
@@ -58,11 +62,11 @@ def uniform_price_mechanism(orders):
     for i, x in short_side.iterrows():
         #t = (i, x.energy_qty, price, -1, True)
         if x.type:
-            t = (str(uuid.uuid4()), x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
+            t = (str(uuid.uuid4()), x.User, x.User_id, x.Unit_area,  x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
                  "","","","","","",price,x.energy_qty, x.delivery_time, "Buying")
                 #User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time
         else:
-            t = (str(uuid.uuid4()),"","","","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
+            t = (str(uuid.uuid4()),"","", x.Unit_area, "","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
                  price,x.energy_qty, x.delivery_time, "Selling")
         trans.add_transaction(*t)
     
@@ -77,11 +81,11 @@ def uniform_price_mechanism(orders):
             x_quantity = traded_quantity - quantity_added
 
         if x.type:
-            t = (str(uuid.uuid4()), x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
+            t = (str(uuid.uuid4()), x.User, x.User_id, x.Unit_area, x.Order_id, x.energy_qty, x.energy_rate, x.bid_offer_time,
                  "","","","","","",price,x_quantity, x.delivery_time, "Buying")
                 #User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time
         else:
-            t = (str(uuid.uuid4()),"","","","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, 
+            t = (str(uuid.uuid4()),"","", x.Unit_area,"","","","",x.User, x.User_id, x.Order_id, x.energy_qty, x.energy_rate, 
                  x.bid_offer_time, price,x_quantity, x.delivery_time, "Selling")
 
         #t = (i, x_quantity, price, -1, False)
@@ -117,7 +121,7 @@ class UniformPrice(Mechanism):
         
         
         
-#pm.market.MECHANISM['TPC'] = UniformPrice        
+      
         
         
         

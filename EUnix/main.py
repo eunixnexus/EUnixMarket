@@ -1,30 +1,23 @@
-import EUnix as mp
+import os
+import pandas as pd
 
 
-Nslot = 4
+from EUnix.simulation import Simulation as sm
 
-for i in range(Nslot): #market slot
-    mar= mp.Market()
-#(User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time,type, attributes, requirements, power, area, direction)
-    mar.accept_order("Chris", "a2a2", 1, 100, 30, "20min","30min", True) 
-    mar.accept_order("Uche", "a2a3", 2, 200, 20, "20min","30min", True) 
-    mar.accept_order("Chika", "a2a5", 3, 100, 15, "20min","30min", True) #150
-    mar.accept_order("Chekas", "a2a6", 4, 50, 10, "20min","30min", True) 
+marktSlots = "timeslot" #This is the user name
+curr_dir = os.path.dirname(__file__)
 
-    mar.accept_order("Ngozi", "a3a4", 5, 100, 5, "20min","30min", False) 
-    mar.accept_order("Ebere", "a3a3", 6, 200, 10, "20min","30min", False) 
-    mar.accept_order("Amuche", "a3a4", 7, 50, 15, "20min","30min", False) 
-    mar.accept_order("Nkem", "a3a5", 8, 60, 15, "20min","30min", False) 
-    mar.accept_order("Uka", "a3a6", 9, 150, 25, "20min","30min", False)
+
+data = pd.read_csv(os.path.join(curr_dir, "data/"+str(marktSlots)+'.csv'), delimiter=',')
 
 
 
-#bids = mar.get_oders()
-#print (bids)
-transactions, extras = mar.run('p2p')
-trans_df = transactions.get_df()
-print(trans_df)
-
+Nslot = 10
+startSlot = "2014-12-01T00:00"
+simu = sm(data,startSlot, Nslot, "p2p" ) #mechanism can be "uniform", "p2p", "hhc"
+#simu = sm(pub_ins)
+prev_slot, index = simu.simulate()
+simu.closeSimulation(prev_slot, index)
 
 
 

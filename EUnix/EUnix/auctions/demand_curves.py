@@ -6,65 +6,7 @@ from .orders import OrderManager
 def demand_curve_from_bids(bids):
     """
     Creates a demand curve from a set of buying bids.
-    It is the inverse cumulative distribution of quantity
-    as a function of price.
 
-    Parameters
-    ----------
-    bids
-        Collection of all the bids in the market. The algorithm
-        filters only the buying bids.
-
-    Returns
-    ---------
-    demand_curve: np.ndarray
-       Stepwise constant demand curve represented as a collection
-       of the N rightmost points of each interval (N-1 bids). It is stored
-       as a (N, 2) matrix where the first column is the x-coordinate
-       and the second column is the y-coordinate.
-       An extra point is a))dded with x coordinate at infinity and
-       price at 0 to represent the end of the curve.
-
-    index : np.ndarray
-        The order of the identifier of each bid in the demand
-        curve.
-
-    Examples
-    ---------
-
-    A minimal example, selling bid is ignored:
-
-    >>> bm = pm.BidManager()
-    >>> bm.add_bid(1, 1, 0, buying=True)
-    0
-    >>> bm.add_bid(1, 1, 1, buying=False)
-    1
-    >>> dc, index = pm.demand_curve_from_bids(bm.get_df())
-    >>> dc
-    array([[ 1.,  1.],
-           [inf,  0.]])
-    >>> index
-    array([0])
-
-    A larger example with reordering of bids:
-
-    >>> bm = pm.BidManager()
-    >>> bm.add_bid(1, 1, 0, buying=True)
-    0
-    >>> bm.add_bid(1, 1, 1, buying=False)
-    1
-    >>> bm.add_bid(3, 0.5, 2, buying=True)
-    2
-    >>> bm.add_bid(2.3, 0.1, 3, buying=True)
-    3
-    >>> dc, index = pm.demand_curve_from_bids(bm.get_df())
-    >>> dc
-    array([[1. , 1. ],
-           [4. , 0.5],
-           [6.3, 0.1],
-           [inf, 0. ]])
-    >>> index
-    array([0, 2, 3])
 
     """
     buying = bids[bids.type]
@@ -196,112 +138,77 @@ def get_value_stepwise(x, f):
             return step[1]
 
 
-def intersect_stepwise(
-        f,
-        g,
-        k=0.5
-    ):
+def intersect_stepwise(Buy, Sell):
     """
-    Finds the intersection of
-    two stepwise constants functions
-    where f is assumed to be bigger at 0
-    than g.
-    If no intersection is found, None is returned.
-
-    Parameters
-    ----------
-    f: np.ndarray
-        Stepwise constant function represented as
-        a 2 column matrix where each row is the rightmost
-        point of the constat interval. The first column
-        is sorted increasingly.
-        Preconditions: f is non-increasing.
-
-    g: np.ndarray
-        Stepwise constant function represented as
-        a 2 column matrix where each row is the rightmost
-        point of the constat interval. The first column
-        is sorted increasingly.
-        Preconditions: g is non-decreasing and
-        `f[0, 0] > g[0, 0]`
-    k : float
-        If the intersection is empty or an interval,
-        a convex combination of the y-values of f and g
-        will be returned and k will be used to determine
-        hte final value. `k=1` will be the value of g
-        while `k=0` will be the value of f.
-
-    Returns
-    --------
-    x_ast : float or None
-        Axis coordinate of the intersection of both
-        functions. If the intersection is empty,
-        then it returns None.
-    f_ast : int or None
-        Index of the rightmost extreme
-        of the interval of `f` involved in the
-        intersection. If the intersection is
-        empty, returns None
-    g_ast : int or None
-        Index of the rightmost extreme
-        of the interval of `g` involved in the
-        intersection. If the intersection is
-        empty, returns None.
-    v : float or None
-        Ordinate of the intersection if it
-        is uniquely identified, otherwise
-        the k-convex combination of the
-        y values of `f` and `g` in the last
-        point when they were both defined.
-
-    Examples
-    ---------
-    Simple intersection with diferent domains
-
-    >>> f = np.array([[1, 3], [3, 1]])
-    >>> g = np.array([[2,2]])
-    >>> pm.intersect_stepwise(f, g)
-    (1, 0, 0, 2)
-
-    Empty intersection, returning the middle value
-
-    >>> f = np.array([[1,3], [2, 2.5]])
-    >>> g = np.array([[1,1], [2, 2]])
-    >>> pm.intersect_stepwise(f, g)
-    (None, None, None, 2.25)
+    Determines the equilibrium point for supply and demand.
+    
+    Parameters:
+        Buy (ndarray): 2D array containing buy quantities and prices (descending price order).
+        Sell (ndarray): 2D array containing sell quantities and prices (ascending price order).
+        
+    Returns:
+        q_ (float): Quantity at which supply and demand meet.
+        price (float): Price at which supply and demand meet.
+        b_ (int): Index of the buyer at that position.
+        s_ (int): Index of the seller at that position.
+        If no equilibrium is found, returns None for all values.
     """
+    # Check if there's only one buy and one sell row
+    if len(Buy) <= 2 and len(Sell) <= 2:
 
+        buy_price = Buy[0][1]
+        sell_price = Sell[0][1]
+        if buy_price > sell_price:  # Buyer willing to pay more than seller's ask
+            # Equilibrium quantity is the minimum of the two quantities
+            q_ = min(Buy[0][0], Sell[0][0])
+            # Equilibrium price is the average of the buy and sell price
+            price = (buy_price + sell_price) / 2
+            return q_, price, 0, 0  # Indices are both 0 since there's only one row
+    
+    
+    # Accumulate the Buy and Sell quantities
+    buy_cumulative = np.cumsum(Buy[:, 0])  # Cumulative quantities for buyers
+    sell_cumulative = np.cumsum(Sell[:, 0])  # Cumulative quantities for sellers
+    
+    for b_, buy_qty in enumerate(buy_cumulative):
+        for s_, sell_qty in enumerate(sell_cumulative):
+            # Check if there's an overlap between supply and demand
+            if buy_qty >= sell_qty and Buy[b_, 1] >= Sell[s_, 1]:  # Prices and quantities match
+                q_ = sell_qty  # Quantity at equilibrium is the supply
+                price = (Buy[b_, 1] + Sell[s_, 1]) / 2  # Midpoint of buyer and seller price
+                return q_, price, b_, s_
+    
+    # If no equilibrium is found, return None
+    return None, None, None, None
+        
+""""
+    # Example input data
+    Buy = np.array([
+        [252.194, 21.57],
+        [411.076, 19.5],
+        [695.387, 17.73],
+        [818.158, 10.89],
+        [np.inf, 0]
+    ])
 
+    Sell = np.array([
+        [252.194, 15],
+        [360.171, 20.36],
+        [523.87, 21.37],
+        [1096.814, 21.74],
+        [1228.232, 23.12],
+        [np.inf, np.inf]
+    ])
 
-    x_max = np.min([f.max(axis=0)[0], g.max(axis=0)[0]])
-    xs = sorted([x for x in set(g[:, 0]).union(set(f[:, 0])) if x <= x_max])
-    fext = [get_value_stepwise(x, f) for x in xs]
-    gext = [get_value_stepwise(x, g) for x in xs]
+    # Call the function
+    q_, price, b_, s_ = find_market_equilibrium(Buy, Sell)
 
-
-
-    x_ast = None
-    for i in range(len(xs) - 1):
-        if (fext[i] > gext[i]) and (fext[i + 1] < gext[i + 1]):
-            x_ast = xs[i]
-            v= (fext[i] + gext[i]) *0.5 #this is the market price
-
-        elif (fext[i] == gext[i]) and (fext[i + 1] < gext[i + 1]):
-            x_ast = xs[i]
-            v= (fext[i] + gext[i]) *0.5 #this is the market price
-
-    f_ast = np.argmax(f[:, 0] >= x_ast) if x_ast is not None else None
-    g_ast = np.argmax(g[:, 0] >= x_ast) if x_ast is not None else None
-
-    """"
-    This is deleted to correct the market price
-    g_val = g[g_ast, 1] if g_ast is not None else get_value_stepwise(xs[-1], g)
-    f_val = f[f_ast, 1] if f_ast is not None else get_value_stepwise(xs[-1], f)
-
-    intersect_domain_both = x_ast in f[:, 0] and x_ast in g[:, 0]
-    if not (intersect_domain_both) and (x_ast is not None):
-        v = g_val if x_ast in f[:, 0] else f_val
+    # Output the results
+    if q_ is not None:
+        print(f"Equilibrium found at quantity: {q_}, price: {price}, buyer index: {b_}, seller index: {s_}")
     else:
-        v = g_val * k + (1 - k) * f_val
-    """
+        print("No equilibrium found.")
+
+
     return x_ast, f_ast, g_ast, v
+"""

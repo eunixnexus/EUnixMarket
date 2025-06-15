@@ -1,5 +1,5 @@
 import pandas as pd
-import networkx as nx
+#import networkx as nx
 import numpy as np
 import uuid
 
@@ -125,10 +125,10 @@ def p2p_random(orders, p_coef=0.5, r=None):
                 #trans_s = (s, q, p, b, (quantities[s] - q) > 0)
                 xb = buying.loc[b]
                 xs = selling.loc[s]               
-
-                trans_b = (str(uuid.uuid4()), xb.User, xb.User_id, xb.Order_id, xb.energy_qty, xb.energy_rate, xb.bid_offer_time,
+                trx_id = str(uuid.uuid4())
+                trans_b = (trx_id, xb.User, xb.User_id, xb.Unit_area, xb.Order_id, xb.energy_qty, xb.energy_rate, xb.bid_offer_time,
                  xs.User, xs.User_id, xs.Order_id, xs.energy_qty, xs.energy_rate, xs.bid_offer_time,p,q, xb.delivery_time, "Buying")
-                trans_s = (str(uuid.uuid4()), xb.User, xb.User_id, xb.Order_id, xb.energy_qty, xb.energy_rate, xb.bid_offer_time,
+                trans_s = (trx_id, xb.User, xb.User_id, xs.Unit_area, xb.Order_id, xb.energy_qty, xb.energy_rate, xb.bid_offer_time,
                  xs.User, xs.User_id, xs.Order_id, xs.energy_qty, xs.energy_rate, xs.bid_offer_time,p,q, xb.delivery_time, "Selling")
 
                 quantities[b] -= q

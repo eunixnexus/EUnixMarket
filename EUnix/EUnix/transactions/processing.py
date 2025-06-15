@@ -1,10 +1,7 @@
-"""
-Some processing functions to deal with transactions
-"""
 
 import pandas as pd
 
-from pymarket.transactions.transactions import TransactionManager
+from EUnix.transactions.transactions import TransactionManager
 
 
 def split_transactions_merged_players(transactions, bids, maping, fees=None):

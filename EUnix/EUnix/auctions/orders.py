@@ -20,6 +20,7 @@ class OrderManager:
     col_names = [
         'User',
         'User_id',
+        'Unit_area',
         'Order_id',
         'energy_qty',
         'energy_rate',
@@ -42,6 +43,7 @@ class OrderManager:
         self,
         User,
         User_id,
+        Unit_area,
         Order_id,
         energy_qty,
         energy_rate,
@@ -63,7 +65,7 @@ class OrderManager:
         """
 
 
-        new_order = (User, User_id, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time,
+        new_order = (User, User_id, Unit_area, Order_id, energy_qty, energy_rate, bid_offer_time, delivery_time,
                     type, attributes, requirements, power, area, direction)
         self.orders.append(new_order)
         self.n_orders += 1
