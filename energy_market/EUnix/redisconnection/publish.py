@@ -54,10 +54,13 @@ class ProcessSlots:
 
 
     def send_to_redis(self, inst, data):
-    #Push to Redis
+        # Push to Redis
         self.red_cl.rpush(inst, json.dumps(data))
-        #print(f"Sent data to Redis: {data}")
-        #time.sleep(0.005)  # Simulate data sending interval
+
+        # Set expiration (e.g., 1 hour = 3600 seconds)
+        self.red_cl.expire(inst, 300) 
+
+
 
 
 
