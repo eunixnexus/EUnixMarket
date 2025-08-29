@@ -12,10 +12,10 @@ data = pd.read_csv(os.path.join(curr_dir, "data/"+str(marktSlots)+'.csv'), delim
 
 
 
-Nslot = 10
+Nslot = 94
 startSlot = "2014-12-01T00:00"
 grid_fee = 4 #grid fee in cent/kWh
-simu = sm(data,startSlot, Nslot, "uniform", grid_fee) #mechanism can be "uniform", "p2p", "hhc"
+simu = sm(data,startSlot, Nslot, "p2p", grid_fee) #mechanism can be "uniform", "p2p", "hhc"
 #simu = sm(pub_ins)
 prev_slot, index = simu.simulate()
 simu.closeSimulation(prev_slot, index)
